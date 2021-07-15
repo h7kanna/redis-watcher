@@ -22,6 +22,7 @@ type Watcher struct {
 	close     chan struct{}
 	callback  func(string)
 	ctx       context.Context
+	log       Logger
 }
 
 type MSG struct {
@@ -55,10 +56,8 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	option.Addr = addr
 	initConfig(&option)
 	w := &Watcher{
-		subClient: rds.NewClient(&option.Options),
-		pubClient: rds.NewClient(&option.Options),
-		ctx:       context.Background(),
-		close:     make(chan struct{}),
+		ctx:   context.Background(),
+		close: make(chan struct{}),
 	}
 
 	w.initConfig(option)
@@ -90,16 +89,26 @@ func (w *Watcher) initConfig(option WatcherOptions) error {
 		return err
 	}
 
+	if option.Logger != nil {
+		rds.SetLogger(option.Logger)
+	}
+
 	if option.SubClient != nil {
 		w.subClient = option.SubClient
 	} else {
 		w.subClient = rds.NewClient(&option.Options)
+	}
+	for _, h := range option.Hooks {
+		w.subClient.AddHook(h)
 	}
 
 	if option.PubClient != nil {
 		w.pubClient = option.PubClient
 	} else {
 		w.pubClient = rds.NewClient(&option.Options)
+	}
+	for _, h := range option.Hooks {
+		w.pubClient.AddHook(h)
 	}
 	return nil
 }
@@ -184,10 +193,30 @@ func (w *Watcher) UpdateForSavePolicy(model model.Model) error {
 	})
 }
 
+// UpdateForAddPolicies calls the update callback of other instances to synchronize their policy.
+// It is called after Enforcer.AddPolicies()
+func (w *Watcher) UpdateForAddPolicies(sec string, ptype string, params ...[]string) error {
+	return w.logRecord(func() error {
+		w.l.Lock()
+		defer w.l.Unlock()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForAddPolicies", w.options.LocalID, sec, ptype, params}).Err()
+	})
+}
+
+// UpdateForRemovePolicies calls the update callback of other instances to synchronize their policy.
+// It is called after Enforcer.RemovePolicies()
+func (w *Watcher) UpdateForRemovePolicies(sec string, ptype string, params ...[]string) error {
+	return w.logRecord(func() error {
+		w.l.Lock()
+		defer w.l.Unlock()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForRemovePolicies", w.options.LocalID, sec, ptype, params}).Err()
+	})
+}
+
 func (w *Watcher) logRecord(f func() error) error {
 	err := f()
 	if err != nil {
-		log.Println(err)
+		w.log.Printf(w.ctx, "%s", err.Error())
 	}
 	return err
 }
@@ -204,17 +233,21 @@ func (w *Watcher) subscribe() {
 	wg.Add(1)
 	go func() {
 		defer func() {
-			err := sub.Close()
+			err := w.unsubscribe(sub)
 			if err != nil {
-				log.Println(err)
+				w.log.Printf(w.ctx, "%s", err.Error())
+			}
+			err = sub.Close()
+			if err != nil {
+				w.log.Printf(w.ctx, "%s", err.Error())
 			}
 			err = w.pubClient.Close()
 			if err != nil {
-				log.Println(err)
+				w.log.Printf(w.ctx, "%s", err.Error())
 			}
 			err = w.subClient.Close()
 			if err != nil {
-				log.Println(err)
+				w.log.Printf(w.ctx, "%s", err.Error())
 			}
 		}()
 		ch := sub.Channel()

@@ -1,19 +1,52 @@
 package rediswatcher
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/casbin/casbin/v2/model"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v2/model"
+	"github.com/go-redis/redis/v8"
 )
 
-func initWatcher(t *testing.T) (*casbin.Enforcer, *Watcher) {
-	w, err := NewWatcher("127.0.0.1:6379", WatcherOptions{})
+type redisHook struct{}
+
+var _ redis.Hook = redisHook{}
+
+func (redisHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Context, error) {
+	fmt.Printf("starting processing: <%s>\n", cmd)
+	return ctx, nil
+}
+
+func (redisHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
+	fmt.Printf("finished processing: <%s>\n", cmd)
+	return nil
+}
+
+func (redisHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
+	fmt.Printf("pipeline starting processing: %v\n", cmds)
+	return ctx, nil
+}
+
+func (redisHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
+	fmt.Printf("pipeline finished processing: %v\n", cmds)
+	return nil
+}
+
+func initWatcher(t *testing.T) (*casbin.Enforcer, *Watcher, *miniredis.Miniredis) {
+	server, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("Failed to create to Redis server: %v", err)
+	}
+	w, err := NewWatcher(server.Addr(), WatcherOptions{
+		Hooks: []redis.Hook{redisHook{}},
+	})
 	if err != nil {
 		t.Fatalf("Failed to connect to Redis: %v", err)
 	}
@@ -23,20 +56,22 @@ func initWatcher(t *testing.T) (*casbin.Enforcer, *Watcher) {
 		t.Fatalf("Failed to create enforcer: %v", err)
 	}
 	_ = e.SetWatcher(w)
-	return e, w.(*Watcher)
+	return e, w.(*Watcher), server
 }
+
 func TestWatcher(t *testing.T) {
-	_, w := initWatcher(t)
+	_, w, s := initWatcher(t)
 	_ = w.SetUpdateCallback(func(s string) {
 		fmt.Println(s)
 	})
 	_ = w.Update()
-	w.Close()
 	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
 }
 
 func TestUpdate(t *testing.T) {
-	_, w := initWatcher(t)
+	_, w, s := initWatcher(t)
 	_ = w.SetUpdateCallback(func(s string) {
 		CustomDefaultFunc(
 			func(id string, params interface{}) {
@@ -46,14 +81,16 @@ func TestUpdate(t *testing.T) {
 			if ID != w.options.LocalID {
 				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
 			}
-		}, nil, nil, nil, nil)
+		}, nil, nil, nil, nil, nil, nil)
 	})
 	_ = w.Update()
-	w.Close()
 	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
 }
+
 func TestUpdateForAddPolicy(t *testing.T) {
-	e, w := initWatcher(t)
+	e, w, s := initWatcher(t)
 	_ = w.SetUpdateCallback(func(s string) {
 		CustomDefaultFunc(
 			func(id string, params interface{}) {
@@ -68,14 +105,16 @@ func TestUpdateForAddPolicy(t *testing.T) {
 			if expected != res {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil, nil, nil)
+		}, nil, nil, nil, nil, nil)
 	})
 	_, _ = e.AddPolicy("alice", "book1", "write")
-	w.Close()
 	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
 }
+
 func TestUpdateForRemovePolicy(t *testing.T) {
-	e, w := initWatcher(t)
+	e, w, s := initWatcher(t)
 	_ = w.SetUpdateCallback(func(s string) {
 		CustomDefaultFunc(
 			func(id string, params interface{}) {
@@ -90,15 +129,16 @@ func TestUpdateForRemovePolicy(t *testing.T) {
 			if expected != res {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil, nil)
+		}, nil, nil, nil, nil)
 	})
 	_, _ = e.RemovePolicy("alice", "data1", "read")
-	w.Close()
 	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
 }
 
 func TestUpdateForRemoveFilteredPolicy(t *testing.T) {
-	e, w := initWatcher(t)
+	e, w, s := initWatcher(t)
 	_ = w.SetUpdateCallback(func(s string) {
 		CustomDefaultFunc(
 			func(id string, params interface{}) {
@@ -113,15 +153,16 @@ func TestUpdateForRemoveFilteredPolicy(t *testing.T) {
 			if res != expected {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil)
+		}, nil, nil, nil)
 	})
 	_, _ = e.RemoveFilteredPolicy(1, "data1", "read")
-	w.Close()
 	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
 }
 
 func TestUpdateSavePolicy(t *testing.T) {
-	e, w := initWatcher(t)
+	e, w, s := initWatcher(t)
 	_ = w.SetUpdateCallback(func(s string) {
 		CustomDefaultFunc(
 			func(id string, params interface{}) {
@@ -143,9 +184,58 @@ func TestUpdateSavePolicy(t *testing.T) {
 			if !reflect.DeepEqual(res.GetPolicy("g", "g"), expected.GetPolicy("g", "g")) {
 				t.Fatalf("instance Params should be %#v instead of %#v", expected, res)
 			}
-		})
+		}, nil, nil)
 	})
 	_ = e.SavePolicy()
-	w.Close()
 	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
+}
+
+func TestUpdateForAddPolicies(t *testing.T) {
+	e, w, s := initWatcher(t)
+	_ = w.SetUpdateCallback(func(s string) {
+		CustomDefaultFunc(
+			func(id string, params interface{}) {
+				t.Fatalf("method mapping error")
+			},
+		)(s, nil, nil, nil, nil, nil, func(ID string, params interface{}) {
+			if ID != w.options.LocalID {
+				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
+			}
+			expected := fmt.Sprintf("%v", [][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}})
+			res := fmt.Sprintf("%v", params)
+			if expected != res {
+				t.Fatalf("instance Params should be %s instead of %s", expected, res)
+			}
+		}, nil)
+	})
+	_, _ = e.AddPolicies([][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}})
+	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
+}
+
+func TestUpdateForRemovePolicies(t *testing.T) {
+	e, w, s := initWatcher(t)
+	_ = w.SetUpdateCallback(func(s string) {
+		CustomDefaultFunc(
+			func(id string, params interface{}) {
+				t.Fatalf("method mapping error")
+			},
+		)(s, nil, nil, nil, nil, nil, nil, func(ID string, params interface{}) {
+			if ID != w.options.LocalID {
+				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
+			}
+			expected := fmt.Sprintf("%v", [][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}})
+			res := fmt.Sprintf("%v", params)
+			if expected != res {
+				t.Fatalf("instance Params should be %s instead of %s", expected, res)
+			}
+		})
+	})
+	_, _ = e.RemoveGroupingPolicies([][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}})
+	time.Sleep(time.Millisecond * 500)
+	w.Close()
+	s.Close()
 }
