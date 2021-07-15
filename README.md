@@ -57,6 +57,63 @@ func main() {
 
 ```
 
+## Using Callback with SyncedEnforcer
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/casbin/casbin/v2"
+	watcher "github.com/casbin/redis-watcher/v2"
+	"github.com/go-redis/redis/v8"
+)
+
+type Logger struct {
+	log *log.Logger
+}
+
+func (l *Logger) Printf(ctx context.Context, format string, v ...interface{}) {
+	_ = l.log.Output(2, fmt.Sprintf(format, v...))
+}
+
+func main() {
+	logger := &Logger{log: log.Default()}
+	// Initialize the enforcer.
+	e, _ := casbin.NewSyncedEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
+
+	// Initialize the watcher.
+	// Use the Redis host as parameter.
+	callback := watcher.NewSyncedCallbackHandler("id", e, logger).Handle
+	w, err := watcher.NewWatcher("localhost:6379", watcher.WatcherOptions{
+		Options: redis.Options{
+			Network:  "tcp",
+			Password: "",
+		},
+		Channel:                "/casbin",
+		IgnoreSelf:             true,
+	})
+	if err != nil {
+		log.Fatalf("Failed to create watcher: %v", err)
+	}
+
+	_ = e.SetWatcher(w)
+	err = w.SetUpdateCallback(callback)
+	if err != nil {
+		log.Fatalf("Failed to create watcher: %v", err)
+	}
+
+	// Update the policy to test the effect.
+	// You should see "[casbin rules updated]" in the log.
+	_ = e.SavePolicy()
+}
+
+
+```
+
 ## Getting Help
 
 - [Casbin](https://github.com/casbin/casbin)
