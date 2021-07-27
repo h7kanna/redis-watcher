@@ -133,7 +133,7 @@ func TestSyncedCallbackHandler_UpdateForRemovePolicy(t *testing.T) {
 
 	response, err := writer.AddPolicy("alice", "book1", "write")
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	updated := reader.GetPolicy()
@@ -142,7 +142,7 @@ func TestSyncedCallbackHandler_UpdateForRemovePolicy(t *testing.T) {
 
 	response, err = writer.RemovePolicy("alice", "book1", "write")
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	removed := reader.GetPolicy()
 	t.Log("Policy: ", removed)
 	util.Array2DEquals([][]string{{}}, removed)
@@ -170,7 +170,7 @@ func TestSyncedCallbackHandler_UpdateForRemoveFilteredPolicy(t *testing.T) {
 
 	response, err := writer.AddPolicies([][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}})
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	added := reader.GetPolicy()
@@ -181,7 +181,7 @@ func TestSyncedCallbackHandler_UpdateForRemoveFilteredPolicy(t *testing.T) {
 
 	response, err = writer.RemoveFilteredPolicy(1, "book1", "read")
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	synced := reader.GetPolicy()
@@ -260,7 +260,7 @@ func TestSyncedCallbackHandler_UpdateForRemovePolicies(t *testing.T) {
 
 	response, err = writer.RemovePolicies([][]string{{"alice", "book1", "write"}, {"alice", "book2", "write"}})
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	synced := reader.GetPolicy()
@@ -291,7 +291,7 @@ func TestSyncedCallbackHandler_UpdateForUpdatePolicy(t *testing.T) {
 
 	response, err := writer.AddPolicy("alice", "book1", "write")
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	added := reader.GetPolicy()
@@ -300,7 +300,7 @@ func TestSyncedCallbackHandler_UpdateForUpdatePolicy(t *testing.T) {
 
 	response, err = writer.UpdatePolicy([]string{"alice", "book1", "write"}, []string{"alice", "book1", "read"})
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	updated := reader.GetPolicy()
@@ -353,7 +353,7 @@ func TestSyncedCallbackHandler_UpdateForUpdatePolicies(t *testing.T) {
 		[][]string{{"bob", "book1", "write"}, {"bob", "book2", "write"}},
 	)
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	synced := reader.GetPolicy()
@@ -408,7 +408,7 @@ func TestSyncedCallbackHandler_UpdateForUpdateFilteredPolicies(t *testing.T) {
 
 	response, err = writer.UpdateFilteredPolicies([][]string{{"alice", "book3", "read"}, {"alice", "book3", "write"}}, 1, "book1")
 	assertResult(t, response, err)
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 50)
 	t.Log("Policy: ", writer.GetPolicy())
 
 	synced := reader.GetPolicy()

@@ -57,7 +57,7 @@ func TestUpdate(t *testing.T) {
 			if ID != w.options.LocalID {
 				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
 			}
-		}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		}, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 	_ = w.Update()
 	time.Sleep(time.Millisecond * 50)
@@ -82,7 +82,7 @@ func TestUpdateForAddPolicy(t *testing.T) {
 			if expected != res {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil, nil, nil, nil, nil, nil, nil, nil)
+		}, nil, nil, nil, nil, nil, nil, nil)
 	})
 	_, _ = e.AddPolicy("alice", "book1", "write")
 	time.Sleep(time.Millisecond * 50)
@@ -107,7 +107,7 @@ func TestUpdateForRemovePolicy(t *testing.T) {
 			if expected != res {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil, nil, nil, nil, nil, nil, nil)
+		}, nil, nil, nil, nil, nil, nil)
 	})
 	_, _ = e.RemovePolicy("alice", "data1", "read")
 	time.Sleep(time.Millisecond * 50)
@@ -132,7 +132,7 @@ func TestUpdateForRemoveFilteredPolicy(t *testing.T) {
 			if res != expected {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil, nil, nil, nil, nil, nil)
+		}, nil, nil, nil, nil, nil)
 	})
 	_, _ = e.RemoveFilteredPolicy(1, "data1", "read")
 	time.Sleep(time.Millisecond * 50)
@@ -164,7 +164,7 @@ func TestUpdateSavePolicy(t *testing.T) {
 			if !reflect.DeepEqual(res.GetPolicy("g", "g"), expected.GetPolicy("g", "g")) {
 				t.Fatalf("instance Params should be %#v instead of %#v", expected, res)
 			}
-		}, nil, nil, nil, nil, nil)
+		}, nil, nil, nil, nil)
 	})
 	_ = e.SavePolicy()
 	time.Sleep(time.Millisecond * 50)
@@ -189,7 +189,7 @@ func TestUpdateForAddPolicies(t *testing.T) {
 			if expected != res {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil, nil, nil, nil)
+		}, nil, nil, nil)
 	})
 	_, _ = e.AddPolicies([][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}})
 	time.Sleep(time.Millisecond * 50)
@@ -214,7 +214,7 @@ func TestUpdateForRemovePolicies(t *testing.T) {
 			if expected != res {
 				t.Fatalf("instance Params should be %s instead of %s", expected, res)
 			}
-		}, nil, nil, nil)
+		}, nil, nil)
 	})
 	_, _ = e.RemoveGroupingPolicies([][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}})
 	time.Sleep(time.Millisecond * 50)
@@ -242,7 +242,7 @@ func TestUpdateForUpdatePolicy(t *testing.T) {
 			if reflect.DeepEqual(expected, res) {
 				t.Fatalf("instance Params should be %+v instead of %+v", expected, res)
 			}
-		}, nil, nil)
+		}, nil)
 	})
 	_, _ = e.UpdatePolicy([]string{"alice", "data1", "read"}, []string{"alice", "data1", "write"})
 	time.Sleep(time.Millisecond * 50)
@@ -273,7 +273,7 @@ func TestUpdateForUpdatePolicies(t *testing.T) {
 			if reflect.DeepEqual(expected, params) {
 				t.Fatalf("instance Params should be %s instead of %s", expected, params)
 			}
-		}, nil)
+		})
 	})
 	_, _ = e.UpdatePolicies([][]string{{"alice", "book1", "read"}, {"alice", "book1", "write"}}, [][]string{{"alice", "data1", "read"}, {"alice", "data1", "write"}})
 	time.Sleep(time.Millisecond * 50)
@@ -289,7 +289,7 @@ func TestUpdateForUpdateFilteredPolicies(t *testing.T) {
 			func(id string, params interface{}) {
 				t.Fatalf("method mapping error")
 			},
-		)(s, nil, nil, nil, nil, nil, nil, nil, nil, nil, func(ID string, params interface{}) {
+		)(s, nil, nil, nil, nil, nil, nil, nil, nil, func(ID string, params interface{}) {
 			if ID != w.options.LocalID {
 				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
 			}

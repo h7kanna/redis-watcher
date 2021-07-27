@@ -239,14 +239,6 @@ func (w *Watcher) UpdateForUpdatePolicies(sec string, ptype string, oldRules, ne
 	})
 }
 
-func (w *Watcher) UpdateForUpdateFilteredPolicies(sec, ptype string, oldRules, newRules [][]string) error {
-	return w.logRecord(func() error {
-		w.l.Lock()
-		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForUpdateFilteredPolicies", w.options.LocalID, sec, ptype, &Updates{OldRule: oldRules, NewRule: newRules}}).Err()
-	})
-}
-
 func (w *Watcher) logRecord(f func() error) error {
 	err := f()
 	if err != nil {

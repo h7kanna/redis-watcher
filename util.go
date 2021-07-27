@@ -5,10 +5,10 @@ import (
 	"log"
 )
 
-type CallbackFunc func(msg string, update, updateForAddPolicy, updateForRemovePolicy, updateForRemoveFilteredPolicy, updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies, updateForUpdateFilteredPolicies func(string, interface{}))
+type CallbackFunc func(msg string, update, updateForAddPolicy, updateForRemovePolicy, updateForRemoveFilteredPolicy, updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies func(string, interface{}))
 
 func CustomDefaultFunc(defaultFunc func(string, interface{})) CallbackFunc {
-	return func(msg string, update, updateForAddPolicy, updateForRemovePolicy, updateForRemoveFilteredPolicy, updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies, updateForUpdateFilteredPolicies func(string, interface{})) {
+	return func(msg string, update, updateForAddPolicy, updateForRemovePolicy, updateForRemoveFilteredPolicy, updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies func(string, interface{})) {
 		msgStruct := &MSG{}
 		err := msgStruct.UnmarshalBinary([]byte(msg))
 		if err != nil {
@@ -39,8 +39,6 @@ func CustomDefaultFunc(defaultFunc func(string, interface{})) CallbackFunc {
 			invoke(updateForUpdatePolicy)
 		case "UpdateForUpdatePolicies":
 			invoke(updateForUpdatePolicies)
-		case "UpdateForUpdateFilteredPolicies":
-			invoke(updateForUpdateFilteredPolicies)
 		}
 	}
 }

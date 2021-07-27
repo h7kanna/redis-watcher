@@ -13,10 +13,10 @@ import (
 //go:generate mockgen -destination=mocks/mock_adapter.go -package=mocks github.com/casbin/casbin/v2/persist BatchAdapter,UpdatableAdapter
 
 type SyncCallbackFunc func(msg string, update, updateForAddPolicy, updateForRemovePolicy, updateForRemoveFilteredPolicy,
-	updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies, updateForUpdateFilteredPolicies func(string, string, string, interface{}))
+	updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies func(string, string, string, interface{}))
 
 func SyncCustomDefaultFunc(defaultFunc func(string, string, string, interface{})) SyncCallbackFunc {
-	return func(msg string, update, updateForAddPolicy, updateForRemovePolicy, updateForRemoveFilteredPolicy, updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies, updateForUpdateFilteredPolicies func(string, string, string, interface{})) {
+	return func(msg string, update, updateForAddPolicy, updateForRemovePolicy, updateForRemoveFilteredPolicy, updateForSavePolicy, updateForAddPolicies, updateForRemovePolicies, updateForUpdatePolicy, updateForUpdatePolicies func(string, string, string, interface{})) {
 		msgStruct := &MSG{}
 		err := msgStruct.UnmarshalBinary([]byte(msg))
 		if err != nil {
@@ -47,8 +47,6 @@ func SyncCustomDefaultFunc(defaultFunc func(string, string, string, interface{})
 			invoke(updateForUpdatePolicy)
 		case "UpdateForUpdatePolicies":
 			invoke(updateForUpdatePolicies)
-		case "UpdateForUpdateFilteredPolicies":
-			invoke(updateForUpdateFilteredPolicies)
 		}
 	}
 }
@@ -77,7 +75,7 @@ func (c *SyncedCallbackHandler) Handle(data string) {
 		func(id, sec, ptype string, params interface{}) {
 			c.logger.Printf(nil, "method mapping error")
 		},
-	)(data, c.Update, c.UpdateForAddPolicy, c.UpdateForRemovePolicy, c.UpdateForRemoveFilteredPolicy, c.UpdateForSavePolicy, c.UpdateForAddPolicies, c.UpdateForRemovePolicies, c.UpdateForUpdatePolicy, c.UpdateForUpdatePolicies, c.UpdateForUpdateFilteredPolicies)
+	)(data, c.Update, c.UpdateForAddPolicy, c.UpdateForRemovePolicy, c.UpdateForRemoveFilteredPolicy, c.UpdateForSavePolicy, c.UpdateForAddPolicies, c.UpdateForRemovePolicies, c.UpdateForUpdatePolicy, c.UpdateForUpdatePolicies)
 }
 
 func (c *SyncedCallbackHandler) Update(id, sec, ptype string, params interface{}) {
@@ -189,8 +187,4 @@ func (c *SyncedCallbackHandler) UpdateForUpdatePolicies(id, sec, ptype string, p
 		}
 		_, _ = c.e.GetOperator().UpdatePolicies(sec, ptype, oldRule, newRule)
 	}
-}
-
-func (c *SyncedCallbackHandler) UpdateForUpdateFilteredPolicies(id, sec, ptype string, params interface{}) {
-	c.UpdateForUpdatePolicies(id, sec, ptype, params)
 }
